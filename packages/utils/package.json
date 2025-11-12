@@ -1,0 +1,17 @@
+{
+  "name": "@workspace/utils",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./validators/*": "./src/validators/*.ts",
+    "./constants/*": "./src/constants/*.ts",
+    "./formatters/*": "./src/formatters/*.ts"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "latest"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}
