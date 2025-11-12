@@ -258,6 +258,19 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
 
+  packages/utils:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: latest
+        version: 5.9.3
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
