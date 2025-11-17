@@ -35,6 +35,8 @@ import {
   Download,
 } from "lucide-react";
 import Link from "next/link";
+import { exportToCSV, formatCurrency, formatDate } from "@/lib/export";
+import { toast } from "sonner";
 
 type Period = "week" | "month" | "quarter" | "year";
 
@@ -66,6 +68,68 @@ export default function SalesReportPage() {
   const startDate = useMemo(() => {
     return Date.now() - periodDays[period] * 24 * 60 * 60 * 1000;
   }, [period]);
+
+  const handleExport = () => {
+    try {
+      // Preparar datos para exportación
+      const exportData = {
+        // Ventas diarias
+        ventasDiarias: dailySalesData.map((item) => ({
+          Fecha: item.fecha,
+          Ingresos: formatCurrency(item.ingresos),
+          "Cantidad de Ventas": item.ventas,
+        })),
+        // Top productos
+        topProductos: (topProducts || []).map((product, index) => ({
+          Posición: index + 1,
+          Producto: product.productName,
+          Cantidad: product.totalQuantity,
+          Ingresos: formatCurrency(product.totalRevenue),
+        })),
+        // Métodos de pago
+        metodosPago: paymentMethodsData.map((item) => ({
+          "Método de Pago": item.nombre,
+          Monto: formatCurrency(item.valor),
+        })),
+      };
+
+      // Exportar resumen
+      const summaryData = [
+        {
+          Periodo: periodLabels[period],
+          "Fecha Inicio": formatDate(startDate),
+          "Fecha Fin": formatDate(Date.now()),
+          "Ingresos Totales": formatCurrency(salesMetrics?.totalRevenue || 0),
+          "Total Ventas": salesMetrics?.totalSales || 0,
+          "Ticket Promedio": formatCurrency(salesMetrics?.averageTicket || 0),
+          "Total Descuentos": formatCurrency(salesMetrics?.totalDiscount || 0),
+        },
+      ];
+
+      exportToCSV(summaryData, `reporte-ventas-resumen-${Date.now()}.csv`, {
+        Periodo: "Período",
+        "Fecha Inicio": "Fecha Inicio",
+        "Fecha Fin": "Fecha Fin",
+        "Ingresos Totales": "Ingresos Totales",
+        "Total Ventas": "Total Ventas",
+        "Ticket Promedio": "Ticket Promedio",
+        "Total Descuentos": "Total Descuentos",
+      });
+
+      // También exportar ventas diarias
+      if (dailySalesData.length > 0) {
+        exportToCSV(
+          exportData.ventasDiarias,
+          `reporte-ventas-diarias-${Date.now()}.csv`
+        );
+      }
+
+      toast.success("Reporte exportado correctamente");
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      toast.error("Error al exportar el reporte");
+    }
+  };
 
   const salesMetrics = useQuery(api.reports.getSalesMetrics, {
     startDate,
@@ -168,7 +232,7 @@ export default function SalesReportPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExport}>
             <Download className="h-4 w-4" />
             Exportar
           </Button>

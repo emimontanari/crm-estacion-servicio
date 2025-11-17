@@ -14,6 +14,8 @@ import {
 import { ArrowLeft, Download, Users, Award, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { exportToCSV, formatCurrency, formatDate } from "@/lib/export";
+import { toast } from "sonner";
 
 export default function CustomersReportPage() {
   const router = useRouter();
@@ -34,7 +36,43 @@ export default function CustomersReportPage() {
   });
 
   const handleExport = () => {
-    alert("Funcionalidad de exportación en desarrollo");
+    try {
+      // Exportar resumen
+      const summaryData = [
+        {
+          "Fecha Inicio": formatDate(startDate),
+          "Fecha Fin": formatDate(endDate),
+          "Total Clientes": customerMetrics?.totalCustomers || 0,
+          "Nuevos Clientes": customerMetrics?.newCustomers || 0,
+          "Clientes Activos": customerMetrics?.activeCustomers || 0,
+          "Gasto Promedio": formatCurrency(customerMetrics?.averageSpent || 0),
+          "Total Puntos": customerMetrics?.totalPoints || 0,
+          "Promedio Puntos": Math.round(customerMetrics?.averagePoints || 0),
+        },
+      ];
+
+      exportToCSV(summaryData, `reporte-clientes-resumen-${Date.now()}.csv`);
+
+      // Exportar top clientes
+      if (topCustomers && topCustomers.length > 0) {
+        const topCustomersData = topCustomers.map((customer, index) => ({
+          Posición: index + 1,
+          Nombre: customer.name,
+          Teléfono: customer.phone,
+          Email: customer.email || "N/A",
+          "Total Gastado": formatCurrency(customer.totalSpent),
+          "Total Compras": customer.totalPurchases,
+          "Puntos Fidelidad": customer.loyaltyPoints,
+        }));
+
+        exportToCSV(topCustomersData, `reporte-top-clientes-${Date.now()}.csv`);
+      }
+
+      toast.success("Reporte exportado correctamente");
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      toast.error("Error al exportar el reporte");
+    }
   };
 
   if (topCustomers === undefined || customerMetrics === undefined) {
