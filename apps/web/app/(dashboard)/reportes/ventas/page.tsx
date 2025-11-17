@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@workspace/backend";
 import {
@@ -8,59 +8,118 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Button,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Badge,
+  StatCard,
+  LineChart,
+  BarChart,
+  PieChart,
+  ComposedChart,
+  Button,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@workspace/ui";
-import { ArrowLeft, Download, Calendar, DollarSign } from "lucide-react";
+import {
+  DollarSign,
+  ShoppingCart,
+  TrendingUp,
+  CreditCard,
+  ArrowLeft,
+  Download,
+} from "lucide-react";
 import Link from "next/link";
 
-type GroupBy = "day" | "week" | "month";
+type Period = "week" | "month" | "quarter" | "year";
 
-const groupByLabels: Record<GroupBy, string> = {
-  day: "Por Día",
-  week: "Por Semana",
-  month: "Por Mes",
+const periodLabels: Record<Period, string> = {
+  week: "Última Semana",
+  month: "Último Mes",
+  quarter: "Último Trimestre",
+  year: "Último Año",
+};
+
+const periodDays: Record<Period, number> = {
+  week: 7,
+  month: 30,
+  quarter: 90,
+  year: 365,
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: "Efectivo",
+  credit_card: "Tarjeta de Crédito",
+  debit_card: "Tarjeta de Débito",
+  transfer: "Transferencia",
+  qr: "QR/Billetera Digital",
 };
 
 export default function SalesReportPage() {
-  const [groupBy, setGroupBy] = useState<GroupBy>("day");
-  const [daysBack, setDaysBack] = useState(7);
+  const [period, setPeriod] = useState<Period>("month");
 
-  const startDate = Date.now() - daysBack * 24 * 60 * 60 * 1000;
-  const endDate = Date.now();
+  const startDate = useMemo(() => {
+    return Date.now() - periodDays[period] * 24 * 60 * 60 * 1000;
+  }, [period]);
 
-  const salesByPeriod = useQuery(api.reports.getSalesByPeriod, {
+  const salesMetrics = useQuery(api.reports.getSalesMetrics, {
     startDate,
-    endDate,
-    groupBy,
-  });
-
-  const salesByPaymentMethod = useQuery(api.reports.getSalesByPaymentMethod, {
-    startDate,
-    endDate,
+    endDate: Date.now(),
   });
 
   const topProducts = useQuery(api.reports.getTopProducts, {
     startDate,
-    endDate,
+    endDate: Date.now(),
     limit: 10,
   });
 
-  const handleExport = () => {
-    // TODO: Implement export to CSV/Excel
-    alert("Funcionalidad de exportación en desarrollo");
-  };
+  // Preparar datos para gráficos
+  const dailySalesData = useMemo(() => {
+    if (!salesMetrics?.dailySales) return [];
 
-  if (
-    salesByPeriod === undefined ||
-    salesByPaymentMethod === undefined ||
-    topProducts === undefined
-  ) {
+    return Object.entries(salesMetrics.dailySales)
+      .map(([date, data]: [string, any]) => ({
+        fecha: new Date(date).toLocaleDateString("es-AR", {
+          day: "2-digit",
+          month: "short",
+        }),
+        ingresos: data.revenue,
+        ventas: data.count,
+        timestamp: new Date(date).getTime(),
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+  }, [salesMetrics]);
+
+  const paymentMethodsData = useMemo(() => {
+    if (!salesMetrics?.paymentMethods) return [];
+
+    return Object.entries(salesMetrics.paymentMethods)
+      .map(([method, amount]: [string, any]) => ({
+        nombre: PAYMENT_METHOD_LABELS[method] || method,
+        valor: amount,
+      }))
+      .filter((item) => item.valor > 0);
+  }, [salesMetrics]);
+
+  const topProductsData = useMemo(() => {
+    if (!topProducts) return [];
+
+    return topProducts.slice(0, 8).map((product) => ({
+      nombre:
+        product.productName.length > 15
+          ? product.productName.substring(0, 15) + "..."
+          : product.productName,
+      ingresos: product.totalRevenue,
+      cantidad: product.totalQuantity,
+    }));
+  }, [topProducts]);
+
+  if (salesMetrics === undefined || topProducts === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -68,283 +127,241 @@ export default function SalesReportPage() {
     );
   }
 
-  // Calculate totals
-  const totalRevenue = salesByPeriod.reduce((sum, item) => sum + item.revenue, 0);
-  const totalSales = salesByPeriod.reduce((sum, item) => sum + item.count, 0);
-  const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
-
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/reportes">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              Reporte de Ventas
-            </h2>
-            <p className="text-muted-foreground">
-              Análisis detallado de ventas por período
-            </p>
-          </div>
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/reportes">Reportes</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Ventas</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Reporte de Ventas
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Análisis detallado de ventas y rendimiento
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-4 items-end">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Período</label>
           <Select
-            value={daysBack.toString()}
-            onValueChange={(value) => setDaysBack(parseInt(value))}
+            value={period}
+            onValueChange={(value: Period) => setPeriod(value)}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7">Últimos 7 días</SelectItem>
-              <SelectItem value="15">Últimos 15 días</SelectItem>
-              <SelectItem value="30">Últimos 30 días</SelectItem>
-              <SelectItem value="60">Últimos 60 días</SelectItem>
-              <SelectItem value="90">Últimos 90 días</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Agrupar por</label>
-          <Select
-            value={groupBy}
-            onValueChange={(value: GroupBy) => setGroupBy(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(groupByLabels).map(([key, label]) => (
+              {Object.entries(periodLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>
                   {label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <Button variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* KPIs */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Ingresos Totales"
+          value={`$${salesMetrics.totalRevenue.toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+          })}`}
+          icon={DollarSign}
+          description={periodLabels[period]}
+        />
+        <StatCard
+          title="Total de Ventas"
+          value={salesMetrics.totalSales.toString()}
+          icon={ShoppingCart}
+          description={`${salesMetrics.totalSales} transacciones`}
+        />
+        <StatCard
+          title="Ticket Promedio"
+          value={`$${salesMetrics.averageTicket.toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+          })}`}
+          icon={TrendingUp}
+          description="por venta"
+        />
+        <StatCard
+          title="Total Descuentos"
+          value={`$${salesMetrics.totalDiscount.toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+          })}`}
+          icon={CreditCard}
+          description="aplicados"
+        />
+      </div>
+
+      {/* Gráfico de Tendencia de Ventas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-chart-1" />
+            Evolución de Ventas e Ingresos
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Tendencia diaria durante el período seleccionado
+          </p>
+        </CardHeader>
+        <CardContent>
+          {dailySalesData.length === 0 ? (
+            <div className="flex items-center justify-center h-[400px]">
+              <p className="text-muted-foreground">No hay datos disponibles</p>
+            </div>
+          ) : (
+            <ComposedChart
+              data={dailySalesData}
+              xAxisKey="fecha"
+              elements={[
+                {
+                  type: "area",
+                  dataKey: "ingresos",
+                  name: "Ingresos ($)",
+                  color: "hsl(var(--chart-1))",
+                  yAxisId: "left",
+                },
+                {
+                  type: "line",
+                  dataKey: "ventas",
+                  name: "Cantidad de Ventas",
+                  color: "hsl(var(--chart-2))",
+                  yAxisId: "right",
+                },
+              ]}
+              yAxisLabel="Ingresos ($)"
+              secondaryYAxisLabel="Cantidad"
+              formatTooltip={(value: any, name: string) => {
+                if (name === "Ingresos ($)") {
+                  return `$${Number(value).toLocaleString("es-AR", {
+                    minimumFractionDigits: 2,
+                  })}`;
+                }
+                return value.toString();
+              }}
+              formatYAxis={(value: any) => {
+                if (value >= 1000) {
+                  return `$${(value / 1000).toFixed(0)}k`;
+                }
+                return `$${value}`;
+              }}
+              showGrid
+              showLegend
+              minHeight={400}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Grid de 2 columnas */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Top Productos */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              Ingresos Totales
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-chart-2" />
+              Top Productos por Ingresos
             </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Productos que generaron más ingresos
+            </p>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              $
-              {totalRevenue.toLocaleString("es-AR", {
-                minimumFractionDigits: 2,
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              En {daysBack} días
-            </p>
+            {topProductsData.length === 0 ? (
+              <div className="flex items-center justify-center h-[350px]">
+                <p className="text-muted-foreground">No hay datos disponibles</p>
+              </div>
+            ) : (
+              <BarChart
+                data={topProductsData}
+                xAxisKey="nombre"
+                bars={[
+                  {
+                    dataKey: "ingresos",
+                    name: "Ingresos",
+                    color: "hsl(var(--chart-2))",
+                  },
+                ]}
+                formatTooltip={(value: any) => {
+                  return `$${Number(value).toLocaleString("es-AR", {
+                    minimumFractionDigits: 2,
+                  })}`;
+                }}
+                formatYAxis={(value: any) => {
+                  if (value >= 1000) {
+                    return `$${(value / 1000).toFixed(0)}k`;
+                  }
+                  return `$${value}`;
+                }}
+                showGrid
+                showLegend={false}
+                minHeight={350}
+              />
+            )}
           </CardContent>
         </Card>
 
+        {/* Métodos de Pago */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Total de Ventas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalSales}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Transacciones
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              Ticket Promedio
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-chart-3" />
+              Distribución por Método de Pago
             </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Preferencias de pago de los clientes
+            </p>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              $
-              {averageTicket.toLocaleString("es-AR", {
-                minimumFractionDigits: 2,
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Por venta</p>
+            {paymentMethodsData.length === 0 ? (
+              <div className="flex items-center justify-center h-[350px]">
+                <p className="text-muted-foreground">No hay datos disponibles</p>
+              </div>
+            ) : (
+              <PieChart
+                data={paymentMethodsData}
+                dataKey="valor"
+                nameKey="nombre"
+                showLegend
+                showLabels
+                innerRadius={60}
+                minHeight={350}
+                formatTooltip={(value: any) => {
+                  return `$${Number(value).toLocaleString("es-AR", {
+                    minimumFractionDigits: 2,
+                  })}`;
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Sales by Period */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ventas por Período</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {salesByPeriod.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No hay datos disponibles
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {salesByPeriod.map((item) => (
-                <div
-                  key={item.period}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">
-                        {new Date(item.period).toLocaleDateString("es-AR", {
-                          dateStyle: groupBy === "day" ? "short" : "medium",
-                        })}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.count} ventas
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-lg">
-                      $
-                      {item.revenue.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Promedio: $
-                      {(item.revenue / item.count).toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Sales by Payment Method */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ventas por Método de Pago</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {salesByPaymentMethod.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No hay datos disponibles
-            </p>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {salesByPaymentMethod.map((item) => {
-                const percentage = (item.revenue / totalRevenue) * 100;
-                const methodLabels: Record<string, string> = {
-                  cash: "Efectivo",
-                  credit_card: "Tarjeta de Crédito",
-                  debit_card: "Tarjeta de Débito",
-                  transfer: "Transferencia",
-                };
-
-                return (
-                  <div
-                    key={item.paymentMethod}
-                    className="p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">
-                        {methodLabels[item.paymentMethod] || item.paymentMethod}
-                      </p>
-                      <Badge variant="secondary">{item.count} ventas</Badge>
-                    </div>
-                    <p className="text-2xl font-bold">
-                      $
-                      {item.revenue.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </p>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{percentage.toFixed(1)}% del total</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Top Products */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Productos Más Vendidos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {topProducts.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No hay datos disponibles
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {topProducts.map((product, index) => (
-                <div
-                  key={product._id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {product.totalSold} {product.unit} vendidos
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">
-                      $
-                      {product.totalRevenue.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      en ventas
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Back Button */}
+      <div className="flex justify-start">
+        <Link href="/reportes">
+          <Button variant="outline" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Volver a Reportes
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }
