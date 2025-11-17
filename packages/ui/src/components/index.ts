@@ -34,3 +34,6 @@ export * from "./crm/product-card";
 export * from "./crm/loyalty-badge";
 export * from "./crm/sale-summary";
 export * from "./crm/payment-method-selector";
+
+// Chart components
+export * from "./charts";
