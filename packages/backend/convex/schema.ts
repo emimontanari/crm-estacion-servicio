@@ -445,4 +445,245 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_and_type", ["orgId", "type"])
     .index("by_org_and_created", ["orgId", "createdAt"]),
+
+  // ============================================
+  // SISTEMA DE NOTIFICACIONES
+  // ============================================
+
+  /**
+   * Plantillas de notificaciones
+   * Plantillas reutilizables para diferentes tipos de notificaciones
+   */
+  notificationTemplates: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.union(
+      v.literal("welcome"),
+      v.literal("purchase_confirmation"),
+      v.literal("loyalty_points"),
+      v.literal("promotion"),
+      v.literal("birthday"),
+      v.literal("payment_receipt"),
+      v.literal("low_stock_alert"),
+      v.literal("custom")
+    ),
+    channels: v.array(v.union(
+      v.literal("email"),
+      v.literal("sms"),
+      v.literal("push")
+    )),
+    // Plantillas por canal
+    emailTemplate: v.optional(v.object({
+      subject: v.string(),
+      htmlBody: v.string(),
+      textBody: v.optional(v.string()),
+    })),
+    smsTemplate: v.optional(v.object({
+      body: v.string(),
+    })),
+    pushTemplate: v.optional(v.object({
+      title: v.string(),
+      body: v.string(),
+      icon: v.optional(v.string()),
+      clickAction: v.optional(v.string()),
+    })),
+    // Variables disponibles en la plantilla (ej: {{customerName}}, {{points}})
+    variables: v.array(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_type", ["orgId", "type"])
+    .index("by_org_and_active", ["orgId", "isActive"]),
+
+  /**
+   * Notificaciones
+   * Registro de todas las notificaciones enviadas o programadas
+   */
+  notifications: defineTable({
+    orgId: v.id("organizations"),
+    templateId: v.optional(v.id("notificationTemplates")),
+    recipientType: v.union(
+      v.literal("customer"),
+      v.literal("user"),
+      v.literal("all_customers"),
+      v.literal("segment")
+    ),
+    recipientId: v.optional(v.union(
+      v.id("customers"),
+      v.id("users")
+    )),
+    recipientEmail: v.optional(v.string()),
+    recipientPhone: v.optional(v.string()),
+    channel: v.union(
+      v.literal("email"),
+      v.literal("sms"),
+      v.literal("push"),
+      v.literal("multi")
+    ),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    // Contenido de la notificación
+    subject: v.optional(v.string()),
+    body: v.string(),
+    htmlBody: v.optional(v.string()),
+    // Metadata
+    metadata: v.optional(v.any()),
+    variables: v.optional(v.any()), // Variables usadas para renderizar la plantilla
+    // Programación
+    scheduledFor: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    // Tracking
+    deliveredAt: v.optional(v.number()),
+    readAt: v.optional(v.number()),
+    clickedAt: v.optional(v.number()),
+    // Error handling
+    errorMessage: v.optional(v.string()),
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    // IDs externos de servicios de terceros
+    externalId: v.optional(v.string()), // ID del proveedor (Twilio, Resend, FCM)
+    // Relaciones
+    relatedSaleId: v.optional(v.id("sales")),
+    relatedPromotionId: v.optional(v.id("promotions")),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_recipient", ["orgId", "recipientId"])
+    .index("by_org_and_channel", ["orgId", "channel"])
+    .index("by_org_and_created", ["orgId", "createdAt"])
+    .index("by_scheduled", ["scheduledFor"])
+    .index("by_customer", ["recipientId"])
+    .index("by_status", ["status"]),
+
+  /**
+   * Preferencias de notificaciones
+   * Configuración de preferencias de cada usuario/cliente
+   */
+  notificationPreferences: defineTable({
+    orgId: v.id("organizations"),
+    entityType: v.union(v.literal("customer"), v.literal("user")),
+    entityId: v.union(v.id("customers"), v.id("users")),
+    // Canales habilitados
+    emailEnabled: v.boolean(),
+    smsEnabled: v.boolean(),
+    pushEnabled: v.boolean(),
+    // Tipos de notificaciones permitidas
+    marketingEnabled: v.boolean(),
+    transactionalEnabled: v.boolean(),
+    loyaltyEnabled: v.boolean(),
+    promotionsEnabled: v.boolean(),
+    // Configuración específica
+    quietHoursEnabled: v.boolean(),
+    quietHoursStart: v.optional(v.string()), // "22:00"
+    quietHoursEnd: v.optional(v.string()), // "08:00"
+    timezone: v.optional(v.string()),
+    // Tokens para push notifications
+    fcmTokens: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_entity", ["orgId", "entityType", "entityId"])
+    .index("by_entity", ["entityId"]),
+
+  /**
+   * Logs de notificaciones
+   * Registro detallado de eventos del sistema de notificaciones
+   */
+  notificationLogs: defineTable({
+    orgId: v.id("organizations"),
+    notificationId: v.id("notifications"),
+    event: v.union(
+      v.literal("created"),
+      v.literal("scheduled"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("failed"),
+      v.literal("bounced"),
+      v.literal("opened"),
+      v.literal("clicked"),
+      v.literal("unsubscribed")
+    ),
+    channel: v.union(
+      v.literal("email"),
+      v.literal("sms"),
+      v.literal("push")
+    ),
+    details: v.optional(v.string()),
+    errorCode: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_notification", ["notificationId"])
+    .index("by_org_and_event", ["orgId", "event"])
+    .index("by_org_and_created", ["orgId", "createdAt"]),
+
+  /**
+   * Campañas de notificaciones
+   * Para envíos masivos o programados
+   */
+  notificationCampaigns: defineTable({
+    orgId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    templateId: v.id("notificationTemplates"),
+    targetType: v.union(
+      v.literal("all_customers"),
+      v.literal("segment"),
+      v.literal("specific_list")
+    ),
+    // Segmentación
+    segmentFilter: v.optional(v.any()), // Filtros para seleccionar destinatarios
+    specificRecipients: v.optional(v.array(v.union(
+      v.id("customers"),
+      v.id("users")
+    ))),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("failed")
+    ),
+    scheduledFor: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    // Estadísticas
+    totalRecipients: v.number(),
+    sentCount: v.number(),
+    deliveredCount: v.number(),
+    failedCount: v.number(),
+    openedCount: v.number(),
+    clickedCount: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_created", ["orgId", "createdAt"])
+    .index("by_scheduled", ["scheduledFor"]),
 });
