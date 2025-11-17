@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { exportToCSV, formatCurrency, formatDate } from "@/lib/export";
+import { toast } from "sonner";
 
 const categoryLabels: Record<string, string> = {
   fuel: "Combustible",
@@ -54,7 +56,62 @@ export default function InventoryReportPage() {
   const allProducts = useQuery(api.products.getAll, { includeInactive: false });
 
   const handleExport = () => {
-    alert("Funcionalidad de exportación en desarrollo");
+    try {
+      if (!allProducts || !inventoryMetrics) return;
+
+      // Calcular valor del inventario
+      const inventoryValue = allProducts.reduce(
+        (sum, p) => sum + p.price * p.stock,
+        0
+      );
+
+      // Exportar resumen
+      const summaryData = [
+        {
+          "Fecha Inicio": formatDate(startDate),
+          "Fecha Fin": formatDate(endDate),
+          "Total Productos": inventoryMetrics.totalProducts,
+          "Valor Total": formatCurrency(inventoryValue),
+          "Stock Bajo": inventoryMetrics.lowStockCount,
+          "Rotación": `${inventoryMetrics.turnoverRate.toFixed(2)} veces`,
+        },
+      ];
+
+      exportToCSV(summaryData, `reporte-inventario-resumen-${Date.now()}.csv`);
+
+      // Exportar todos los productos
+      const productsData = allProducts.map((product) => ({
+        SKU: product.sku || "N/A",
+        Nombre: product.name,
+        Categoría: categoryLabels[product.category] || product.category,
+        Precio: formatCurrency(product.price),
+        Costo: formatCurrency(product.cost || 0),
+        Stock: product.stock,
+        "Stock Mínimo": product.minStock || 0,
+        "Valor Inventario": formatCurrency(product.price * product.stock),
+        Estado: product.isActive ? "Activo" : "Inactivo",
+      }));
+
+      exportToCSV(productsData, `reporte-inventario-productos-${Date.now()}.csv`);
+
+      // Exportar stock bajo
+      if (lowStockProducts && lowStockProducts.length > 0) {
+        const lowStockData = lowStockProducts.map((product) => ({
+          Nombre: product.name,
+          SKU: product.sku || "N/A",
+          Stock: product.stock,
+          "Stock Mínimo": product.minStock || 0,
+          Diferencia: product.stock - (product.minStock || 0),
+        }));
+
+        exportToCSV(lowStockData, `reporte-stock-bajo-${Date.now()}.csv`);
+      }
+
+      toast.success("Reporte exportado correctamente");
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      toast.error("Error al exportar el reporte");
+    }
   };
 
   if (
