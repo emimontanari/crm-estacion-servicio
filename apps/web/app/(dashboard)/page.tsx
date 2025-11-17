@@ -1,34 +1,49 @@
 "use client";
-import {
-  Authenticated,
-  Unauthenticated,
-  useMutation,
-  useQuery,
-} from "convex/react";
-import { OrganizationSwitcher, SignInButton, UserButton } from "@clerk/nextjs";
-import { api } from "@workspace/backend/_generated/api";
-import { Button } from "@workspace/ui/components/button";
 
-export default function Page() {
-  const users = useQuery(api.users.getMany);
-  const addUser = useMutation(api.users.add);
+import { DashboardStats } from "./components/dashboard-stats";
+import { RecentSales } from "./components/recent-sales";
+import { LowStockAlerts } from "./components/low-stock-alerts";
+import { useCurrentUser } from "@/modules/auth/hooks";
+
+export default function DashboardPage() {
+  const { user, isLoading } = useCurrentUser();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <Authenticated>
-        <div className="flex flex-col items-center justify-center min-h-svh">
-          <UserButton />
-          <OrganizationSwitcher hidePersonal />
-          <Button onClick={() => addUser()}>Add</Button>
-          <div className="max-w-sm w-full mx-auto">
-          </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">
+          Dashboard
+        </h2>
+        <div className="flex items-center space-x-2">
+          <p className="text-sm text-muted-foreground">
+            Bienvenido, {user?.name}
+          </p>
         </div>
-      </Authenticated>
-      <Unauthenticated>
-        <SignInButton>
-          <Button>Sign In</Button>
-        </SignInButton>
-      </Unauthenticated>
-    </>
+      </div>
+
+      {/* KPIs */}
+      <DashboardStats />
+
+      {/* Grid de 2 columnas */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Ventas recientes - 4 columnas */}
+        <div className="col-span-4">
+          <RecentSales />
+        </div>
+
+        {/* Alertas de stock - 3 columnas */}
+        <div className="col-span-3">
+          <LowStockAlerts />
+        </div>
+      </div>
+    </div>
   );
 }
