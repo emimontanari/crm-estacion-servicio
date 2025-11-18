@@ -38,8 +38,8 @@ jest.mock('@clerk/nextjs', () => ({
   ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
   SignedOut: () => null,
-  UserButton: () => <div>UserButton</div>,
-  OrganizationSwitcher: () => <div>OrgSwitcher</div>,
+  UserButton: () => null,
+  OrganizationSwitcher: () => null,
 }))
 
 // Mock Convex
@@ -53,13 +53,11 @@ jest.mock('convex/react', () => ({
 
 // Mock Recharts to avoid canvas issues in tests
 jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-  LineChart: () => <div>LineChart</div>,
-  BarChart: () => <div>BarChart</div>,
-  PieChart: () => <div>PieChart</div>,
-  AreaChart: () => <div>AreaChart</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => children,
+  LineChart: () => null,
+  BarChart: () => null,
+  PieChart: () => null,
+  AreaChart: () => null,
   Line: () => null,
   Bar: () => null,
   Pie: () => null,

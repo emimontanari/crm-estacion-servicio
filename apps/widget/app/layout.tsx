@@ -1,17 +1,14 @@
-import { Geist, Geist_Mono } from "next/font/google"
-
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
 
-const fontSans = Geist({
-  subsets: ["latin"],
+// Use system fonts instead of Google Fonts to avoid build issues
+const fontSans = {
   variable: "--font-sans",
-})
+}
 
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
+const fontMono = {
   variable: "--font-mono",
-})
+}
 
 export default function RootLayout({
   children,

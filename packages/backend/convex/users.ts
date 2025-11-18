@@ -245,10 +245,11 @@ export const update = mutation({
 
     // Verificar unicidad de email si cambió
     if (args.email && args.email !== user.email) {
+      const email = args.email; // TypeScript narrowing
       const existingEmail = await ctx.db
         .query("users")
         .withIndex("by_org_and_email", (q) =>
-          q.eq("orgId", auth.orgId).eq("email", args.email)
+          q.eq("orgId", auth.orgId).eq("email", email)
         )
         .first();
 
