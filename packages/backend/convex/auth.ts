@@ -3,8 +3,14 @@ import { Id } from "./_generated/dataModel";
 
 /**
  * Tipos de roles de usuario
+ *
+ * - admin: Administrador con acceso completo al sistema
+ * - manager: Gerente con acceso de gestión (sin config crítica)
+ * - cashier: Mecánico/operador con acceso operativo (ventas, clientes consulta)
+ * - viewer: Usuario interno con acceso de solo lectura
+ * - customer: Cliente externo con acceso solo a su propia información
  */
-export type UserRole = "admin" | "manager" | "cashier" | "viewer";
+export type UserRole = "admin" | "manager" | "cashier" | "viewer" | "customer";
 
 /**
  * Información de autenticación
@@ -106,10 +112,52 @@ export function isCashier(auth: AuthInfo): boolean {
 }
 
 /**
- * Verifica que el usuario pueda escribir (no es viewer)
+ * Verifica que el usuario pueda escribir (no es viewer ni customer)
  */
 export function requireWriteAccess(auth: AuthInfo): void {
-  if (auth.role === "viewer") {
+  if (auth.role === "viewer" || auth.role === "customer") {
     throw new Error("Read-only access. Cannot modify data.");
   }
+}
+
+/**
+ * Verifica si el usuario es un cliente (customer)
+ */
+export function isCustomer(auth: AuthInfo): boolean {
+  return auth.role === "customer";
+}
+
+/**
+ * Verifica si el usuario es staff (admin, manager o cashier)
+ */
+export function isStaff(auth: AuthInfo): boolean {
+  return auth.role === "admin" || auth.role === "manager" || auth.role === "cashier";
+}
+
+/**
+ * Verifica si el usuario puede gestionar otros usuarios
+ */
+export function canManageUsers(auth: AuthInfo): boolean {
+  return auth.role === "admin" || auth.role === "manager";
+}
+
+/**
+ * Verifica si el usuario puede ver reportes completos
+ */
+export function canViewReports(auth: AuthInfo): boolean {
+  return auth.role === "admin" || auth.role === "manager";
+}
+
+/**
+ * Verifica si el usuario puede modificar configuración del sistema
+ */
+export function canModifySystemConfig(auth: AuthInfo): boolean {
+  return auth.role === "admin";
+}
+
+/**
+ * Verifica si el usuario puede gestionar inventario
+ */
+export function canManageInventory(auth: AuthInfo): boolean {
+  return auth.role === "admin" || auth.role === "manager";
 }

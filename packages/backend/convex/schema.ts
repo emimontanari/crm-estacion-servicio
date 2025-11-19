@@ -45,8 +45,15 @@ export default defineSchema({
     .index("by_slug", ["slug"]),
 
   /**
-   * Usuarios del sistema (Empleados)
+   * Usuarios del sistema (Empleados y Clientes)
    * Vinculados con Clerk para autenticación
+   *
+   * Roles:
+   * - admin: Administrador con acceso completo
+   * - manager: Gerente con acceso de gestión
+   * - cashier: Mecánico/operador con acceso operativo
+   * - viewer: Usuario interno de solo lectura
+   * - customer: Cliente externo con acceso a portal
    */
   users: defineTable({
     clerkUserId: v.string(), // ID de Clerk
@@ -57,7 +64,8 @@ export default defineSchema({
       v.literal("admin"),
       v.literal("manager"),
       v.literal("cashier"),
-      v.literal("viewer")
+      v.literal("viewer"),
+      v.literal("customer")
     ),
     phone: v.optional(v.string()),
     avatar: v.optional(v.string()),
