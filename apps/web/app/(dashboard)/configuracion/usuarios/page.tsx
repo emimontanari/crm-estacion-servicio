@@ -8,6 +8,7 @@ import { DataTable, Button, Badge } from "@workspace/ui";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowLeft, Shield, Trash2, Edit } from "lucide-react";
 import Link from "next/link";
+import { RoleGuard } from "@/modules/auth/components/role-guard";
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -148,7 +149,24 @@ export default function UsersPage() {
   const adminUsers = users?.filter((u) => u.role === "admin").length || 0;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <RoleGuard
+      allowedRoles={["admin"]}
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Acceso Restringido</h2>
+            <p className="text-muted-foreground mb-4">
+              Solo los administradores pueden gestionar usuarios.
+            </p>
+            <Link href="/dashboard">
+              <Button>Volver al Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center gap-4">
         <Link href="/configuracion">
           <Button variant="ghost" size="sm">
@@ -237,5 +255,6 @@ export default function UsersPage() {
         </div>
       </div>
     </div>
+    </RoleGuard>
   );
 }

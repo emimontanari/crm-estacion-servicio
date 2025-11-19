@@ -13,10 +13,12 @@ import {
   ProductCard,
   Badge,
 } from "@workspace/ui";
-import { Search, ShoppingCart, Trash2, Plus, Minus, User } from "lucide-react";
+import { Search, ShoppingCart, Trash2, Plus, Minus, User, Shield } from "lucide-react";
 import { PaymentDialog } from "./components/payment-dialog";
 import { CustomerSelector } from "./components/customer-selector";
 import { useRouter } from "next/navigation";
+import { RoleGuard } from "@/modules/auth/components/role-guard";
+import Link from "next/link";
 
 interface CartItem {
   productId: string;
@@ -165,7 +167,24 @@ export default function POSPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <RoleGuard
+      allowedRoles={["admin", "manager", "cashier"]}
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Acceso Restringido</h2>
+            <p className="text-muted-foreground mb-4">
+              No tienes permisos para realizar ventas.
+            </p>
+            <Link href="/dashboard">
+              <Button>Volver al Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Punto de Venta</h2>
@@ -336,5 +355,6 @@ export default function POSPage() {
         isProcessing={isProcessing}
       />
     </div>
+    </RoleGuard>
   );
 }

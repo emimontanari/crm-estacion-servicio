@@ -29,23 +29,50 @@ const isPublicApiRoute = createRouteMatcher([
 
 /**
  * Rutas administrativas (solo para admins)
+ * Requieren verificación adicional en el componente con RoleGuard
  */
 const isAdminRoute = createRouteMatcher([
   "/configuracion/usuarios(.*)",
   "/configuracion/organizacion(.*)",
+  "/configuracion/pagos(.*)",
 ]);
 
 /**
  * Rutas de gestión (para managers y admins)
+ * Requieren verificación adicional en el componente con RoleGuard
  */
 const isManagerRoute = createRouteMatcher([
   "/configuracion(.*)",
   "/fidelizacion/configuracion(.*)",
-  "/reportes/generar(.*)",
+  "/reportes(.*)",
+  "/inventario(.*)",
+]);
+
+/**
+ * Rutas operativas (para cashiers, managers y admins)
+ * Requieren verificación adicional en el componente con RoleGuard
+ */
+const isCashierRoute = createRouteMatcher([
+  "/ventas(.*)",
+  "/clientes(.*)",
+]);
+
+/**
+ * Rutas de staff interno (cualquier usuario no-customer)
+ * Excluye a clientes externos
+ */
+const isStaffRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/ventas(.*)",
+  "/clientes(.*)",
+  "/inventario(.*)",
+  "/fidelizacion(.*)",
+  "/reportes(.*)",
+  "/configuracion(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId, orgId, orgRole } = await auth();
+  const { userId, orgId } = await auth();
 
   // Si es una ruta pública, permitir acceso
   if (isPublicRoute(req)) {
@@ -69,9 +96,16 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(orgSelection);
   }
 
-  // TODO: Verificación de roles más granular
-  // Esto se puede expandir para verificar roles específicos por ruta
-  // Por ahora dejamos que el frontend y las queries de Convex manejen los permisos
+  // Verificación de roles granular
+  // NOTA: La verificación detallada de permisos se realiza en el componente
+  // usando RoleGuard, ya que el middleware no tiene acceso directo a Convex.
+  // Aquí solo hacemos verificaciones básicas de autenticación y organización.
+
+  // Las rutas de staff requieren que el usuario tenga una organización activa
+  if (isStaffRoute(req) && userId && !orgId) {
+    const forbidden = new URL("/403", req.url);
+    return NextResponse.redirect(forbidden);
+  }
 
   return NextResponse.next();
 });

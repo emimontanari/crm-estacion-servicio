@@ -24,9 +24,11 @@ import {
   TrendingUp,
   FileText,
   BarChart3,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { RoleGuard } from "@/modules/auth/components/role-guard";
 
 type Period = "today" | "week" | "month" | "year";
 
@@ -62,7 +64,24 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <RoleGuard
+      allowedRoles={["admin", "manager"]}
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Acceso Restringido</h2>
+            <p className="text-muted-foreground mb-4">
+              Solo los administradores y gerentes pueden ver reportes detallados.
+            </p>
+            <Link href="/dashboard">
+              <Button>Volver al Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Reportes</h2>
@@ -317,6 +336,7 @@ export default function ReportsPage() {
         </Card>
       )}
     </div>
+    </RoleGuard>
   );
 }
 
