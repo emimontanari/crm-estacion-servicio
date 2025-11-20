@@ -131,18 +131,16 @@ export const getByCustomer = query({
       throw new Error("Unauthorized access to customer");
     }
 
-    let salesQuery = ctx.db
+    const salesQuery = ctx.db
       .query("sales")
       .withIndex("by_org_and_customer", (q) =>
         q.eq("orgId", auth.orgId).eq("customerId", args.customerId)
       )
       .order("desc");
 
-    if (args.limit) {
-      salesQuery = salesQuery.take(args.limit);
-    }
-
-    const sales = await salesQuery.collect();
+    const sales = args.limit
+      ? await salesQuery.take(args.limit)
+      : await salesQuery.collect();
 
     return sales;
   },
