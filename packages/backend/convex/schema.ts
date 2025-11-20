@@ -625,7 +625,8 @@ export default defineSchema({
     channel: v.union(
       v.literal("email"),
       v.literal("sms"),
-      v.literal("push")
+      v.literal("push"),
+      v.literal("multi")
     ),
     details: v.optional(v.string()),
     errorCode: v.optional(v.string()),

@@ -81,16 +81,14 @@ export const getPointsHistory = query({
       throw new Error("Unauthorized access to customer");
     }
 
-    let transactionsQuery = ctx.db
+    const transactionsQuery = ctx.db
       .query("loyaltyTransactions")
       .withIndex("by_customer", (q) => q.eq("customerId", args.customerId))
       .order("desc");
 
-    if (args.limit) {
-      transactionsQuery = transactionsQuery.take(args.limit);
-    }
-
-    const transactions = await transactionsQuery.collect();
+    const transactions = args.limit
+      ? await transactionsQuery.take(args.limit)
+      : await transactionsQuery.collect();
 
     return transactions;
   },

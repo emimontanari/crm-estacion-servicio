@@ -29,10 +29,11 @@ export const getAll = query({
 
     // Aplicar filtros
     if (args.status) {
+      const status = args.status;
       salesQuery = ctx.db
         .query("sales")
         .withIndex("by_org_and_status", (q) =>
-          q.eq("orgId", auth.orgId).eq("status", args.status)
+          q.eq("orgId", auth.orgId).eq("status", status)
         );
     }
 

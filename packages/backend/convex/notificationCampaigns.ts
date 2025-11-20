@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalAction, mutation, query } from "./_generated/server";
+import { action, internalAction, mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 
@@ -246,7 +246,7 @@ export const processLaunch = internalAction({
 /**
  * Obtener campaña por ID (internal)
  */
-export const getById = query({
+export const getById = internalQuery({
   args: {
     campaignId: v.id("notificationCampaigns"),
   },
@@ -258,7 +258,7 @@ export const getById = query({
 /**
  * Obtener plantilla (internal)
  */
-export const getTemplate = query({
+export const getTemplate = internalQuery({
   args: {
     templateId: v.id("notificationTemplates"),
   },
@@ -270,7 +270,7 @@ export const getTemplate = query({
 /**
  * Obtener destinatarios de una campaña (internal)
  */
-export const getRecipients = query({
+export const getRecipients = internalQuery({
   args: {
     campaignId: v.id("notificationCampaigns"),
   },
@@ -320,7 +320,7 @@ export const getRecipients = query({
 /**
  * Crear notificación para un destinatario (internal mutation)
  */
-export const createNotificationForRecipient = mutation({
+export const createNotificationForRecipient = internalMutation({
   args: {
     campaignId: v.id("notificationCampaigns"),
     orgId: v.id("organizations"),
@@ -393,7 +393,7 @@ export const createNotificationForRecipient = mutation({
 /**
  * Actualizar estado de campaña (internal mutation)
  */
-export const updateStatus = mutation({
+export const updateStatus = internalMutation({
   args: {
     campaignId: v.id("notificationCampaigns"),
     status: v.union(
@@ -423,7 +423,7 @@ export const updateStatus = mutation({
 /**
  * Actualizar estadísticas de campaña (internal mutation)
  */
-export const updateStats = mutation({
+export const updateStats = internalMutation({
   args: {
     campaignId: v.id("notificationCampaigns"),
     totalRecipients: v.optional(v.number()),
@@ -453,7 +453,7 @@ export const updateStats = mutation({
 /**
  * Incrementar contador de enviados (internal mutation)
  */
-export const incrementSent = mutation({
+export const incrementSent = internalMutation({
   args: {
     campaignId: v.id("notificationCampaigns"),
   },
@@ -471,7 +471,7 @@ export const incrementSent = mutation({
 /**
  * Incrementar contador de fallidos (internal mutation)
  */
-export const incrementFailed = mutation({
+export const incrementFailed = internalMutation({
   args: {
     campaignId: v.id("notificationCampaigns"),
   },

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 
@@ -138,7 +138,7 @@ export const processSend = internalAction({
       });
 
       // Enviar según el canal
-      let result;
+      let result: { success: boolean; externalId?: string; results?: any[] } | undefined;
       switch (notification.channel) {
         case "email":
           result = await ctx.runAction(internal.notifications.sendEmail, {
@@ -203,7 +203,7 @@ export const processSend = internalAction({
 /**
  * Obtener notificación por ID (internal query)
  */
-export const getById = query({
+export const getById = internalQuery({
   args: {
     notificationId: v.id("notifications"),
   },
@@ -391,7 +391,7 @@ export const sendMultiChannel = internalAction({
 
     // Intentar enviar por email
     try {
-      const emailResult = await ctx.runAction(internal.notifications.sendEmail, {
+      const emailResult: { success: boolean; externalId: string } = await ctx.runAction(internal.notifications.sendEmail, {
         notificationId: args.notificationId,
       });
       results.push({ channel: "email", ...emailResult });
@@ -401,7 +401,7 @@ export const sendMultiChannel = internalAction({
 
     // Intentar enviar por SMS
     try {
-      const smsResult = await ctx.runAction(internal.notifications.sendSMS, {
+      const smsResult: { success: boolean; externalId: string } = await ctx.runAction(internal.notifications.sendSMS, {
         notificationId: args.notificationId,
       });
       results.push({ channel: "sms", ...smsResult });
@@ -411,7 +411,7 @@ export const sendMultiChannel = internalAction({
 
     // Intentar enviar push
     try {
-      const pushResult = await ctx.runAction(internal.notifications.sendPush, {
+      const pushResult: { success: boolean; externalId: string } = await ctx.runAction(internal.notifications.sendPush, {
         notificationId: args.notificationId,
       });
       results.push({ channel: "push", ...pushResult });

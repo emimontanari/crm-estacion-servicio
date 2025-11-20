@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { requireAuth, isAdmin, isManager, requireRole } from "./auth";
 
 /**
@@ -248,7 +248,7 @@ export const update = mutation({
       const existingEmail = await ctx.db
         .query("users")
         .withIndex("by_org_and_email", (q) =>
-          q.eq("orgId", auth.orgId).eq("email", args.email)
+          q.eq("orgId", auth.orgId).eq("email", args.email!)
         )
         .first();
 
@@ -522,6 +522,49 @@ export const checkPermissions = query({
         canManageSettings: isManager(auth),
         canManageOrganization: isAdmin(auth),
       },
+    };
+  },
+});
+
+/**
+ * Obtener información de autenticación para actions
+ */
+export const getAuthInfo = internalQuery({
+  args: {
+    clerkUserId: v.string(),
+    clerkOrgId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerk_org_id", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .first();
+
+    if (!org) {
+      throw new Error("Organization not found");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found in database");
+    }
+
+    if (!user.isActive) {
+      throw new Error("User account is inactive");
+    }
+
+    return {
+      userId: args.clerkUserId,
+      clerkOrgId: args.clerkOrgId,
+      orgId: org._id,
+      userDbId: user._id,
+      role: user.role,
+      email: user.email,
+      name: user.name,
     };
   },
 });

@@ -1,4 +1,5 @@
-import { QueryCtx, MutationCtx } from "./_generated/server";
+import { QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -71,6 +72,32 @@ export async function requireAuth(
     email: user.email,
     name: user.name,
   };
+}
+
+/**
+ * Verifica que el usuario esté autenticado y obtiene su información (para Actions)
+ */
+export async function requireActionAuth(ctx: ActionCtx): Promise<AuthInfo> {
+  const identity = await ctx.auth.getUserIdentity();
+
+  if (!identity) {
+    throw new Error("Not authenticated");
+  }
+
+  const clerkUserId = identity.subject;
+  const clerkOrgId = identity.orgId as string;
+
+  if (!clerkOrgId) {
+    throw new Error("Missing organization");
+  }
+
+  // Usar la query interna para obtener la información de autenticación
+  const authInfo = await ctx.runQuery(internal.users.getAuthInfo, {
+    clerkUserId,
+    clerkOrgId,
+  });
+
+  return authInfo;
 }
 
 /**

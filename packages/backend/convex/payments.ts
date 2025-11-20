@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
-import { requireAuth, requireWriteAccess } from "./auth";
+import { requireAuth, requireActionAuth, requireWriteAccess } from "./auth";
 import { api } from "./_generated/api";
 import Stripe from "stripe";
 
@@ -70,18 +70,16 @@ export const getByCustomer = query({
       throw new Error("Unauthorized access to customer");
     }
 
-    let paymentsQuery = ctx.db
+    const paymentsQuery = ctx.db
       .query("payments")
       .withIndex("by_org_and_customer", (q) =>
         q.eq("orgId", auth.orgId).eq("customerId", args.customerId)
       )
       .order("desc");
 
-    if (args.limit) {
-      paymentsQuery = paymentsQuery.take(args.limit);
-    }
-
-    const payments = await paymentsQuery.collect();
+    const payments = args.limit
+      ? await paymentsQuery.take(args.limit)
+      : await paymentsQuery.collect();
 
     return payments;
   },
@@ -114,10 +112,11 @@ export const getAll = query({
       .withIndex("by_org", (q) => q.eq("orgId", auth.orgId));
 
     if (args.status) {
+      const status = args.status;
       paymentsQuery = ctx.db
         .query("payments")
         .withIndex("by_org_and_status", (q) =>
-          q.eq("orgId", auth.orgId).eq("status", args.status)
+          q.eq("orgId", auth.orgId).eq("status", status)
         );
     }
 
@@ -403,7 +402,7 @@ export const createStripePaymentIntent = action({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx);
+    const auth = await requireActionAuth(ctx);
     requireWriteAccess(auth);
 
     // Verificar que la clave de Stripe está configurada
@@ -413,7 +412,7 @@ export const createStripePaymentIntent = action({
 
     // Inicializar Stripe
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-01-27.acacia",
+      apiVersion: "2025-10-29.clover",
     });
 
     // Verificar acceso a la venta
@@ -546,7 +545,7 @@ export const confirmStripePayment = action({
     paymentIntentId: v.string(),
   },
   handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx);
+    const auth = await requireActionAuth(ctx);
     requireWriteAccess(auth);
 
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -554,7 +553,7 @@ export const confirmStripePayment = action({
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-01-27.acacia",
+      apiVersion: "2025-10-29.clover",
     });
 
     // Obtener el Payment Intent de Stripe
@@ -618,8 +617,8 @@ export const processStripeRefund = action({
     amount: v.optional(v.number()),
     reason: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const auth = await requireAuth(ctx);
+  handler: async (ctx, args): Promise<{ success: boolean; refundId: string; amount: number; status: string | null }> => {
+    const auth = await requireActionAuth(ctx);
     requireWriteAccess(auth);
 
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -627,7 +626,7 @@ export const processStripeRefund = action({
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-01-27.acacia",
+      apiVersion: "2025-10-29.clover",
     });
 
     // Obtener el pago
@@ -650,8 +649,8 @@ export const processStripeRefund = action({
       payment_intent: payment.stripePaymentIntentId,
       amount: args.amount ? Math.round(args.amount * 100) : undefined,
       reason: args.reason === "duplicate" ? "duplicate" :
-              args.reason === "fraudulent" ? "fraudulent" :
-              "requested_by_customer",
+        args.reason === "fraudulent" ? "fraudulent" :
+          "requested_by_customer",
     });
 
     // Actualizar el pago en la base de datos

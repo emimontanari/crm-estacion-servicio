@@ -1,6 +1,8 @@
 {
   "name": "@workspace/backend",
   "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
   "scripts": {
     "dev": "convex dev",
     "setup": "convex dev --until-success",
@@ -10,6 +12,10 @@
     "test:coverage": "vitest run --coverage"
   },
   "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
     "./convex": "./convex/*.ts"
   },
   "devDependencies": {
@@ -20,6 +26,7 @@
     "vitest": "^4.0.10"
   },
   "dependencies": {
+    "@convex-dev/auth": "^0.0.90",
     "convex": "1.25.4",
     "stripe": "^19.3.1"
   }

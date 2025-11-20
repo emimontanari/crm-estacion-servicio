@@ -414,20 +414,19 @@ export const getReports = query({
       .withIndex("by_org", (q) => q.eq("orgId", auth.orgId));
 
     if (args.type) {
+      const type = args.type;
       reportsQuery = ctx.db
         .query("reports")
         .withIndex("by_org_and_type", (q) =>
-          q.eq("orgId", auth.orgId).eq("type", args.type)
+          q.eq("orgId", auth.orgId).eq("type", type)
         );
     }
 
-    reportsQuery = reportsQuery.order("desc");
+    const orderedReportsQuery = reportsQuery.order("desc");
 
-    if (args.limit) {
-      reportsQuery = reportsQuery.take(args.limit);
-    }
-
-    const reports = await reportsQuery.collect();
+    const reports = args.limit
+      ? await orderedReportsQuery.take(args.limit)
+      : await orderedReportsQuery.collect();
 
     return reports;
   },

@@ -146,7 +146,7 @@ export const getPurchaseHistory = query({
       throw new Error("Unauthorized access to customer");
     }
 
-    let salesQuery = ctx.db
+    const salesQuery = ctx.db
       .query("sales")
       .withIndex("by_org_and_customer", (q) =>
         q.eq("orgId", auth.orgId).eq("customerId", args.customerId)
@@ -154,11 +154,9 @@ export const getPurchaseHistory = query({
       .filter((q) => q.eq(q.field("status"), "completed"))
       .order("desc");
 
-    if (args.limit) {
-      salesQuery = salesQuery.take(args.limit);
-    }
-
-    const sales = await salesQuery.collect();
+    const sales = args.limit
+      ? await salesQuery.take(args.limit)
+      : await salesQuery.collect();
 
     return sales;
   },
@@ -269,7 +267,7 @@ export const create = mutation({
       const existingByEmail = await ctx.db
         .query("customers")
         .withIndex("by_org_and_email", (q) =>
-          q.eq("orgId", auth.orgId).eq("email", args.email)
+          q.eq("orgId", auth.orgId).eq("email", args.email!)
         )
         .first();
 
@@ -351,7 +349,7 @@ export const update = mutation({
       const existing = await ctx.db
         .query("customers")
         .withIndex("by_org_and_phone", (q) =>
-          q.eq("orgId", auth.orgId).eq("phone", args.phone)
+          q.eq("orgId", auth.orgId).eq("phone", args.phone!)
         )
         .first();
 
@@ -365,7 +363,7 @@ export const update = mutation({
       const existing = await ctx.db
         .query("customers")
         .withIndex("by_org_and_email", (q) =>
-          q.eq("orgId", auth.orgId).eq("email", args.email)
+          q.eq("orgId", auth.orgId).eq("email", args.email!)
         )
         .first();
 
